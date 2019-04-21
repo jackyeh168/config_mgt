@@ -10,7 +10,7 @@ require (
 	github.com/jinzhu/gorm v1.9.4
 	github.com/mattn/go-isatty v0.0.7 // indirect
 	github.com/ugorji/go v1.1.4 // indirect
-	golang.org/x/crypto v0.0.0-20190418165655-df01cb2cc480 // indirect
+	golang.org/x/crypto v0.0.0-20190418165655-df01cb2cc480
 	golang.org/x/net v0.0.0-20190420063019-afa5a82059c6 // indirect
 	golang.org/x/sys v0.0.0-20190419153524-e8e3143a4f4a // indirect
 	golang.org/x/tools v0.0.0-20190420181800-aa740d480789 // indirect
