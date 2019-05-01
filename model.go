@@ -27,8 +27,8 @@ type ProjectInfo struct {
 }
 
 type UserProject struct {
-	UserID    uint `gorm:"not null;unique_index:idx_user_proj" json:"user_id" binding:"required"`
-	ProjectID uint `gorm:"not null;unique_index:idx_user_proj" json:"project_id" binding:"required"`
+	UserInfoID    uint `gorm:"not null;unique_index:idx_user_proj" json:"user_info_id" binding:"required"`
+	ProjectInfoID uint `gorm:"not null;unique_index:idx_user_proj" json:"project_info_id" binding:"required"`
 }
 
 type ProjectEnv struct {
@@ -58,7 +58,7 @@ func getDBInstance() *gorm.DB {
 
 func migration() {
 	db := getDBInstance()
-	// db.DropTable(&UserInfo{}, &RoleInfo{}, &ProjectInfo{}, &ProjectEnv{})
+	db.DropTable(&UserInfo{}, &RoleInfo{}, &ProjectInfo{}, &ProjectEnv{}, &UserProject{})
 	db.AutoMigrate(&UserInfo{}, &RoleInfo{}, &ProjectInfo{}, &ProjectEnv{}, &UserProject{})
 }
 
