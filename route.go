@@ -233,7 +233,7 @@ func getProjectEnvs() gin.HandlerFunc {
 }
 
 func saveEnv(env ProjectEnv) bool {
-	if env.EnvKey == "" {
+	if env.EnvKey == "" && env.EnvKey[:2] != "$2" {
 		return false
 	}
 
