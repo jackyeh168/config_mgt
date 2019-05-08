@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auth/model"
 	"errors"
 	"fmt"
 	"time"
@@ -10,6 +11,7 @@ import (
 )
 
 const secondsForOneHour = 3600
+const hmacSampleSecret = "GYthbtJJ6tp3852JMEVmVHhDckdHHDsJ"
 
 func check(err error) {
 	if err != nil {
@@ -23,7 +25,7 @@ func encrypt(secret string) string {
 	return string(hash)
 }
 
-func getJWT(user UserInfo) string {
+func getJWT(user model.UserInfo) string {
 
 	now := time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

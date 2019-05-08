@@ -1,6 +1,7 @@
 package main
 
 import (
+	"auth/model"
 	"os"
 )
 
@@ -18,9 +19,9 @@ func launchServer() {
 }
 
 func main() {
-	initDB()
-	// migration()
-	// seed()
+	model.InitDB()
+	// model.Migration()
+	// model.Seed()
 
 	launchServer()
 }
