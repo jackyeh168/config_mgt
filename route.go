@@ -2,18 +2,10 @@ package main
 
 import (
 	"auth/controller"
-	"auth/model"
-	"auth/util"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type jsonPermission struct {
@@ -22,23 +14,23 @@ type jsonPermission struct {
 	Env     []string `json: "env"`
 }
 
-func verifyUser(user model.UserInfo) (bool, model.UserInfo) {
-	db := model.GetDBInstance()
-	inputPassword := user.Password
+// func verifyUser(user dynamo.User) (bool, dynamo.User) {
+// 	db := dynamo.GetDBInstance()
+// 	inputPassword := user.Password
 
-	if db.Where(&model.UserInfo{Username: user.Username}).First(&user).RecordNotFound() {
-		return false, model.UserInfo{}
-	} else {
-		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(inputPassword)); err != nil {
-			return false, model.UserInfo{}
-		}
-		return true, user
-	}
-}
+// if db.Where(&dynamo.User{UserName: user.UserName}).First(&user).RecordNotFound() {
+// 	return false, dynamo.User{}
+// } else {
+// 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(inputPassword)); err != nil {
+// 		return false, dynamo.User{}
+// 	}
+// 	return true, user
+// }
+// }
 
 // func register() gin.HandlerFunc {
 // 	return func(c *gin.Context) {
-// 		user := model.UserInfo{}
+// 		user :=dynamo.User{}
 // 		err := c.BindJSON(&user)
 // 		util.Check(err)
 
@@ -51,41 +43,41 @@ func verifyUser(user model.UserInfo) (bool, model.UserInfo) {
 // 	}
 // }
 
-func login() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user := model.UserInfo{}
-		err := c.BindJSON(&user)
-		util.Check(err)
-		if isValid, user := verifyUser(user); isValid {
-			c.JSON(200, gin.H{
-				"token": getJWT(user),
-			})
-		} else {
-			c.Status(http.StatusUnauthorized)
-		}
+// func login() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		user := dynamo.User{}
+// 		err := c.BindJSON(&user)
+// 		util.Check(err)
+// 		if isValid, user := verifyUser(user); isValid {
+// 			c.JSON(200, gin.H{
+// 				"token": getJWT(user),
+// 			})
+// 		} else {
+// 			c.Status(http.StatusUnauthorized)
+// 		}
 
-		return
-	}
-}
+// 		return
+// 	}
+// }
 
-func authRequired() gin.HandlerFunc {
-	return func(c *gin.Context) {
+// func authRequired() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
 
-		token := c.GetHeader("Authorization")
+// 		token := c.GetHeader("Authorization")
 
-		// Verify jwt token
+// 		// Verify jwt token
 
-		if roleID, err := verifyJWT(token); err == nil {
-			// if success, then next
-			c.Set("roleID", roleID)
-			c.Next()
-		} else {
-			// else return http 401
-			c.AbortWithStatus(http.StatusUnauthorized)
-		}
-		return
-	}
-}
+// 		if roleID, err := verifyJWT(token); err == nil {
+// 			// if success, then next
+// 			c.Set("roleID", roleID)
+// 			c.Next()
+// 		} else {
+// 			// else return http 401
+// 			c.AbortWithStatus(http.StatusUnauthorized)
+// 		}
+// 		return
+// 	}
+// }
 
 func contains(arr []string, element string) bool {
 	for _, v := range arr {
@@ -96,42 +88,42 @@ func contains(arr []string, element string) bool {
 	return false
 }
 
-func verifyPermission(roleID, resource, action string) bool {
-	db := model.GetDBInstance()
+// func verifyPermission(roleID, resource, action string) bool {
+// 	db := model.GetDBInstance()
 
-	role := model.RoleInfo{}
-	check(db.Where("id =?", roleID).Find(&role).Error)
-	var j jsonPermission
+// 	role := model.RoleInfo{}
+// 	check(db.Where("id =?", roleID).Find(&role).Error)
+// 	var j jsonPermission
 
-	err := json.Unmarshal([]byte(role.Permission), &j)
-	util.Check(err)
+// 	err := json.Unmarshal([]byte(role.Permission), &j)
+// 	util.Check(err)
 
-	v := reflect.ValueOf(&j).Elem().FieldByName(strings.Title(resource))
-	arr := v.Interface().([]string)
+// 	v := reflect.ValueOf(&j).Elem().FieldByName(strings.Title(resource))
+// 	arr := v.Interface().([]string)
 
-	return contains(arr, action)
-}
+// 	return contains(arr, action)
+// }
 
-func isValid(resource, action string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// Verify role
-		roleID, ok := c.Get("roleID")
-		if !ok {
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
-		}
+// func isValid(resource, action string) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		// Verify role
+// 		roleID, ok := c.Get("roleID")
+// 		if !ok {
+// 			c.AbortWithStatus(http.StatusUnauthorized)
+// 			return
+// 		}
 
-		roleStr := fmt.Sprint(roleID.(uint))
-		if verifyPermission(roleStr, resource, action) {
-			// if permission is valid, then next
-			c.Next()
-			return
-		}
-		// else return http 401
-		c.AbortWithStatus(http.StatusUnauthorized)
-		return
-	}
-}
+// 		roleStr := fmt.Sprint(roleID.(uint))
+// 		if verifyPermission(roleStr, resource, action) {
+// 			// if permission is valid, then next
+// 			c.Next()
+// 			return
+// 		}
+// 		// else return http 401
+// 		c.AbortWithStatus(http.StatusUnauthorized)
+// 		return
+// 	}
+// }
 
 func getRouter() *gin.Engine {
 	r := gin.Default()
@@ -146,7 +138,7 @@ func getRouter() *gin.Engine {
 	r.Any("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
-	r.POST("/login", login())
+	// r.POST("/login", login())
 	// r.POST("/register", register())
 
 	r.GET("/users", controller.GetUsers())
