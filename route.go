@@ -154,37 +154,17 @@ func getRouter() *gin.Engine {
 	r.PUT("/user/:user_name", controller.UpdateUser())    // update user
 	r.DELETE("/user/:user_name", controller.DeleteUser()) // delete user
 
-	// r.POST("/user/:user_id/project", addProjectsForUser()) // assign project for user
-	r.GET("/project/:project_id/envs", controller.GetProjectEnvs())  // add env for project
-	r.POST("/project/:project_id/envs", controller.AddProjectEnvs()) // add env for project
-
-	r.GET("/projectowners", controller.GetUserProjects())
-	r.POST("/projectowners", controller.AddUserProjects())
-	r.DELETE("/projectowner", controller.DeleteUserProject())
-
 	r.GET("/projects", controller.GetProjects())
-	r.POST("/projects", controller.AddProjects())                // add project
-	r.PUT("/project/:project_id", controller.UpdateProject())    // update project name
-	r.DELETE("/project/:project_id", controller.DeleteProject()) // delete project
+	r.POST("/projects", controller.AddProjects())                  // add project
+	r.DELETE("/project/:project_name", controller.DeleteProject()) // delete project
 
-	// authorized := r.Group("/")
-	// // per group middleware! in this case we use the custom created
-	// // AuthRequired() middleware just in the "authorized" group.
-	// authorized.Use(authRequired())
-	// {
-	// 	authorized.GET("/users", isValid("user", "read"), getUsers())
-	// 	authorized.POST("/users", isValid("user", "create"), addUsers()) // add user
-	// 	// authorized.POST("/user/:user_id/project", isValid("project", "create"), addProjectsForUser()) // assign project for user
+	r.GET("/relations", controller.GetRelations())
+	r.POST("/relations", controller.AddRelations())
+	r.DELETE("/user/:user_name/project/:project_name/relation", controller.DeleteRelation())
 
-	// 	authorized.GET("/project/:project_id/envs", getmodel.ProjectEnvs()) // add env for project
-	// 	authorized.POST("/project/:project_id/env", addmodel.ProjectEnvs()) // add env for project
+	// r.POST("/user/:user_id/project", addProjectsForUser()) // assign project for user
+	r.GET("/project/:project_name/envs", controller.GetProjectEnvs())     // add env for project
+	r.POST("/project/:project_name/envs", controller.UpdateProjectEnvs()) // add env for project
 
-	// 	// authorized.GET("/projectowners", getAllUserProjects())
-	// 	authorized.GET("/user/:user_id/projectowner", getUserProjects())
-	// 	authorized.POST("/projectowner", addUserProject())
-
-	// 	authorized.GET("/projects", getProjects())
-	// 	authorized.POST("/projects", addProjects()) // add project
-	// }
 	return r
 }

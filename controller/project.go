@@ -1,66 +1,59 @@
 package controller
 
 import (
-	"auth/model"
+	"auth/dynamo"
 	"auth/util"
 
 	"github.com/gin-gonic/gin"
 )
 
 func GetProjects() gin.HandlerFunc {
-	return GetAll(&[]model.ProjectInfo{})
-}
+	return func(c *gin.Context) {
+		err, projects := dynamo.GetProjects()
+		util.Check(err)
 
-func SaveProject(project model.ProjectInfo) bool {
-	return Save(&project)
-}
-
-func SaveProjects(projects []model.ProjectInfo) bool {
-	res := true
-	for _, project := range projects {
-		res = SaveProject(project)
+		c.JSON(200, gin.H{
+			"data": projects,
+		})
 	}
-	return res
 }
 
 func AddProjects() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var projects []model.ProjectInfo
+		var projects []dynamo.Project
 		util.Check(c.BindJSON(&projects))
 
-		SaveProjects(projects)
+		dynamo.SaveProjects(projects)
 		c.JSON(200, gin.H{})
-	}
-}
-
-func UpdateProject() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		var project model.ProjectInfo
-		util.Check(c.BindJSON(&project))
-		// project.ID = util.StrToUint(c.Param("project_id"))
-
-		db := model.GetDBInstance()
-		var oldproject model.ProjectInfo
-		oldproject.ID = util.StrToUint(c.Param("project_id"))
-		db.First(&oldproject)
-
-		oldproject.Name = project.Name
-
-		db.Save(&oldproject)
-
-		c.JSON(200, gin.H{})
-		return
 	}
 }
 
 func DeleteProject() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var project model.ProjectInfo
-		project.ID = util.StrToUint(c.Param("project_id"))
-
-		Delete(&project)
+		project := dynamo.Project{ProjectName: c.Param("project_name")}
+		dynamo.DeleteProject(project)
 
 		c.JSON(200, gin.H{})
-		return
+	}
+}
+
+func GetProjectEnvs() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		err, projectenvs := dynamo.GetProjectEnvs(c.Param("project_name"))
+		util.Check(err)
+
+		c.JSON(200, gin.H{
+			"data": projectenvs,
+		})
+	}
+}
+
+func UpdateProjectEnvs() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var project dynamo.Project
+		util.Check(c.BindJSON(&project))
+
+		dynamo.UpdateProjectEnvs(project)
+		c.JSON(200, gin.H{})
 	}
 }

@@ -31,7 +31,7 @@ type Env struct {
 
 type Project struct {
 	ProjectName string `dynamodbav:"ProjectName" json:"project_name" binding:"required"`
-	Env         []Env  `dynamodbav:"Env" json:"list"`
+	EnvList     []Env  `dynamodbav:"EnvList" json:"env_list"`
 }
 
 var d *dynamodb.DynamoDB
@@ -162,8 +162,6 @@ func listDDB() {
 	// create the input configuration instance
 	input := &dynamodb.ListTablesInput{}
 
-	fmt.Printf("Tables:\n")
-
 	for {
 		// Get the list of tables
 		result, err := d.ListTables(input)
@@ -228,7 +226,7 @@ func createItem(userStr string) {
 func New() {
 	GetDBInstance()
 	// createLocalDDB()
-	// createDDBTable(getUserTable())
+	// createDDBTable(getProjectTable())
 	// createItem("user")
-	createItem("admin")
+	// createItem("admin")
 }

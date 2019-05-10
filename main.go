@@ -19,9 +19,6 @@ func launchServer() {
 }
 
 func main() {
-	// model.InitDB()
-	// model.Migration()
-	// model.Seed()
 	dynamo.New()
 
 	launchServer()
