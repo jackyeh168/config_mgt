@@ -1,7 +1,7 @@
 package main
 
 import (
-	"auth/model"
+	"auth/dynamo"
 	"os"
 )
 
@@ -19,9 +19,10 @@ func launchServer() {
 }
 
 func main() {
-	model.InitDB()
+	// model.InitDB()
 	// model.Migration()
 	// model.Seed()
+	dynamo.New()
 
 	launchServer()
 }

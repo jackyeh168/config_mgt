@@ -36,20 +36,20 @@ func verifyUser(user model.UserInfo) (bool, model.UserInfo) {
 	}
 }
 
-func register() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		user := model.UserInfo{}
-		err := c.BindJSON(&user)
-		util.Check(err)
+// func register() gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		user := model.UserInfo{}
+// 		err := c.BindJSON(&user)
+// 		util.Check(err)
 
-		if controller.SaveUser(user) {
-			c.JSON(200, gin.H{})
-		} else {
-			c.Status(http.StatusBadRequest)
-		}
-		return
-	}
-}
+// 		if controller.SaveUser(user) {
+// 			c.JSON(200, gin.H{})
+// 		} else {
+// 			c.Status(http.StatusBadRequest)
+// 		}
+// 		return
+// 	}
+// }
 
 func login() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -147,12 +147,12 @@ func getRouter() *gin.Engine {
 		c.String(200, "pong")
 	})
 	r.POST("/login", login())
-	r.POST("/register", register())
+	// r.POST("/register", register())
 
 	r.GET("/users", controller.GetUsers())
-	r.POST("/users", controller.AddUsers())             // add user
-	r.PUT("/user/:user_id", controller.UpdateUser())    // update user
-	r.DELETE("/user/:user_id", controller.DeleteUser()) // delete user
+	r.POST("/users", controller.AddUsers())               // add user
+	r.PUT("/user/:user_name", controller.UpdateUser())    // update user
+	r.DELETE("/user/:user_name", controller.DeleteUser()) // delete user
 
 	// r.POST("/user/:user_id/project", addProjectsForUser()) // assign project for user
 	r.GET("/project/:project_id/envs", controller.GetProjectEnvs())  // add env for project

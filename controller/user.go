@@ -1,68 +1,49 @@
 package controller
 
 import (
-	"auth/model"
+	"auth/dynamo"
 	"auth/util"
 
 	"github.com/gin-gonic/gin"
 )
 
 func GetUsers() gin.HandlerFunc {
-	return GetAll(&[]model.UserInfo{})
-}
+	return func(c *gin.Context) {
+		err, users := dynamo.GetUsers()
+		util.Check(err)
 
-func SaveUser(user model.UserInfo) bool {
-	user.Password = util.Encrypt(user.Password)
-	return Save(&user)
-}
-
-func SaveUsers(users []model.UserInfo) bool {
-	res := true
-	for _, user := range users {
-		res = SaveUser(user)
+		c.JSON(200, gin.H{
+			"data": users,
+		})
 	}
-	return res
 }
 
 func AddUsers() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var users []model.UserInfo
+		var users []dynamo.User
 		util.Check(c.BindJSON(&users))
-		SaveUsers(users)
+
+		dynamo.SaveUsers(users)
 		c.JSON(200, gin.H{})
 	}
 }
 
 func UpdateUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user model.UserInfo
+		var user dynamo.User
 		util.Check(c.BindJSON(&user))
 
-		db := model.GetDBInstance()
-		var olduser model.UserInfo
-		olduser.ID = util.StrToUint(c.Param("user_id"))
-		db.First(&olduser)
-
-		if user.Password != "" {
-			olduser.Password = util.Encrypt(user.Password)
-		}
-		olduser.Username = user.Username
-		olduser.RoleID = user.RoleID
-		db.Save(&olduser)
+		dynamo.UpdateUser(user)
 
 		c.JSON(200, gin.H{})
-
 		return
 	}
 }
 
 func DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var user model.UserInfo
-		user.ID = util.StrToUint(c.Param("user_id"))
-
-		db := model.GetDBInstance()
-		db.Unscoped().Delete(&user)
+		user := dynamo.User{UserName: c.Param("user_name")}
+		util.Check(dynamo.DeleteUser(user))
 
 		c.JSON(200, gin.H{})
 		return
