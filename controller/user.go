@@ -43,6 +43,13 @@ func UpdateUser() gin.HandlerFunc {
 func DeleteUser() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := dynamo.User{UserName: c.Param("user_name")}
+
+		err, relations := dynamo.GetUserRelations(user.UserName)
+		util.Check(err)
+		for _, relation := range relations {
+			util.Check(dynamo.DeleteRelation(relation))
+		}
+
 		util.Check(dynamo.DeleteUser(user))
 
 		c.JSON(200, gin.H{})

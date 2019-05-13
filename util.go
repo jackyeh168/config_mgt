@@ -25,12 +25,13 @@ func encrypt(secret string) string {
 	return string(hash)
 }
 
-func getJWT(user dynamo.User) string {
+func getJWT(user dynamo.User, relation string) string {
 
 	now := time.Now().Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_name": user.UserName,
 		"role_name": user.RoleName,
+		"relation":  relation,
 		"exp":       now + secondsForOneHour,
 		"nbf":       now,
 		"iat":       now,
@@ -43,7 +44,7 @@ func getJWT(user dynamo.User) string {
 	return tokenString
 }
 
-func verifyJWT(tokenString string) (string, error) {
+func verifyJWT(tokenString string) (err error, roleName, relation string) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -53,15 +54,20 @@ func verifyJWT(tokenString string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return err, "", ""
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		v, ok := claims["role_name"].(string)
-		if !ok {
-			return "", errors.New("Fail to convert interface to string")
+		roleName, roleNameOK := claims["role_name"].(string)
+		if !roleNameOK {
+			return errors.New("Fail to convert interface to string"), "", ""
 		}
-		return string(v), nil
+		relation, relationOK := claims["relation"].(string)
+		if !relationOK {
+			return errors.New("Fail to convert interface to string"), "", ""
+		}
+
+		return nil, string(roleName), string(relation)
 	}
-	return "", errors.New("Unexpected invalid token")
+	return errors.New("Unexpected invalid token"), "", ""
 }

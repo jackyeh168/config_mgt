@@ -2,10 +2,15 @@ package main
 
 import (
 	"auth/controller"
+	"auth/dynamo"
+	"auth/util"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type jsonPermission struct {
@@ -14,70 +19,77 @@ type jsonPermission struct {
 	Env     []string `json: "env"`
 }
 
-// func verifyUser(user dynamo.User) (bool, dynamo.User) {
-// 	db := dynamo.GetDBInstance()
-// 	inputPassword := user.Password
+func verifyUser(user dynamo.User) (bool, dynamo.User) {
+	err, savedUser := dynamo.GetUser(user.UserName)
+	util.Check(err)
 
-// if db.Where(&dynamo.User{UserName: user.UserName}).First(&user).RecordNotFound() {
-// 	return false, dynamo.User{}
-// } else {
-// 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(inputPassword)); err != nil {
-// 		return false, dynamo.User{}
-// 	}
-// 	return true, user
-// }
-// }
+	if savedUser.UserName == "" {
+		// the user doesn't exist
+		return false, dynamo.User{}
+	}
 
-// func register() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		user :=dynamo.User{}
-// 		err := c.BindJSON(&user)
-// 		util.Check(err)
+	if err := bcrypt.CompareHashAndPassword([]byte(savedUser.Password), []byte(user.Password)); err != nil {
+		return false, dynamo.User{}
+	}
 
-// 		if controller.SaveUser(user) {
-// 			c.JSON(200, gin.H{})
-// 		} else {
-// 			c.Status(http.StatusBadRequest)
-// 		}
-// 		return
-// 	}
-// }
+	return true, savedUser
+}
 
-// func login() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		user := dynamo.User{}
-// 		err := c.BindJSON(&user)
-// 		util.Check(err)
-// 		if isValid, user := verifyUser(user); isValid {
-// 			c.JSON(200, gin.H{
-// 				"token": getJWT(user),
-// 			})
-// 		} else {
-// 			c.Status(http.StatusUnauthorized)
-// 		}
+func getUserRelationList(userName string) []string {
 
-// 		return
-// 	}
-// }
+	err, relations := dynamo.GetUserRelations(userName)
+	util.Check(err)
 
-// func authRequired() gin.HandlerFunc {
-// 	return func(c *gin.Context) {
+	listLen := len(relations)
+	relationList := make([]string, listLen)
 
-// 		token := c.GetHeader("Authorization")
+	for i := 0; i < listLen; i++ {
+		relationList[i] = relations[i].ProjectName
+	}
 
-// 		// Verify jwt token
+	return relationList
+}
 
-// 		if roleID, err := verifyJWT(token); err == nil {
-// 			// if success, then next
-// 			c.Set("roleID", roleID)
-// 			c.Next()
-// 		} else {
-// 			// else return http 401
-// 			c.AbortWithStatus(http.StatusUnauthorized)
-// 		}
-// 		return
-// 	}
-// }
+func stringifyStrArr(s []string) string {
+	return strings.Join(s, ",")
+}
+
+func login() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := dynamo.User{}
+		err := c.BindJSON(&user)
+		util.Check(err)
+
+		if isValid, savedUser := verifyUser(user); isValid {
+			relation := stringifyStrArr(getUserRelationList(user.UserName))
+			c.JSON(200, gin.H{
+				"token": getJWT(savedUser, relation),
+			})
+		} else {
+			c.Status(http.StatusUnauthorized)
+		}
+
+		return
+	}
+}
+
+func authRequired() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+
+		// Verify jwt token
+		if err, roleName, relation := verifyJWT(token); err == nil {
+			// if success, then next
+			c.Set("roleName", roleName)
+			c.Set("relation", relation)
+			c.Next()
+		} else {
+			// else return http 401
+			c.AbortWithStatus(http.StatusUnauthorized)
+		}
+		return
+	}
+}
 
 func contains(arr []string, element string) bool {
 	for _, v := range arr {
@@ -88,42 +100,51 @@ func contains(arr []string, element string) bool {
 	return false
 }
 
-// func verifyPermission(roleID, resource, action string) bool {
-// 	db := model.GetDBInstance()
+func verifyProjectPermission() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Verify role
+		roleName, roleNameOK := c.Get("roleName")
+		allowedRelation, relationOK := c.Get("relation")
+		expectRelation := c.Param("project_name")
 
-// 	role := model.RoleInfo{}
-// 	check(db.Where("id =?", roleID).Find(&role).Error)
-// 	var j jsonPermission
+		if !roleNameOK || !relationOK {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 
-// 	err := json.Unmarshal([]byte(role.Permission), &j)
-// 	util.Check(err)
+		if roleName == "admin" {
+			// if permission is valid, then next
+			c.Next()
+			return
+		} else if roleName == "user" && strings.Contains(allowedRelation.(string), expectRelation) {
+			c.Next()
+			return
+		}
+		// else return http 401
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+}
 
-// 	v := reflect.ValueOf(&j).Elem().FieldByName(strings.Title(resource))
-// 	arr := v.Interface().([]string)
+func isAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Verify role
+		roleName, ok := c.Get("roleName")
+		if !ok {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 
-// 	return contains(arr, action)
-// }
-
-// func isValid(resource, action string) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		// Verify role
-// 		roleID, ok := c.Get("roleID")
-// 		if !ok {
-// 			c.AbortWithStatus(http.StatusUnauthorized)
-// 			return
-// 		}
-
-// 		roleStr := fmt.Sprint(roleID.(uint))
-// 		if verifyPermission(roleStr, resource, action) {
-// 			// if permission is valid, then next
-// 			c.Next()
-// 			return
-// 		}
-// 		// else return http 401
-// 		c.AbortWithStatus(http.StatusUnauthorized)
-// 		return
-// 	}
-// }
+		if roleName == "admin" {
+			// if permission is valid, then next
+			c.Next()
+			return
+		}
+		// else return http 401
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+}
 
 func getRouter() *gin.Engine {
 	r := gin.Default()
@@ -138,25 +159,36 @@ func getRouter() *gin.Engine {
 	r.Any("/ping", func(c *gin.Context) {
 		c.String(200, "pong")
 	})
-	// r.POST("/login", login())
-	// r.POST("/register", register())
+	r.POST("/login", login())
 
-	r.GET("/users", controller.GetUsers())
-	r.POST("/users", controller.AddUsers())               // add user
-	r.PUT("/user/:user_name", controller.UpdateUser())    // update user
-	r.DELETE("/user/:user_name", controller.DeleteUser()) // delete user
+	authorized := r.Group("/")
+	authorized.Use(authRequired())
+	{
+		authorized.GET("/projects", controller.GetProjects())
 
-	r.GET("/projects", controller.GetProjects())
-	r.POST("/projects", controller.AddProjects())                  // add project
-	r.DELETE("/project/:project_name", controller.DeleteProject()) // delete project
+		adminRoute := authorized.Group("/")
+		adminRoute.Use(isAdmin())
+		{
+			// only admin can access user info
+			adminRoute.GET("/users", controller.GetUsers())
+			adminRoute.POST("/users", controller.AddUsers())               // add user
+			adminRoute.PUT("/user/:user_name", controller.UpdateUser())    // update user
+			adminRoute.DELETE("/user/:user_name", controller.DeleteUser()) // delete user
 
-	r.GET("/relations", controller.GetRelations())
-	r.POST("/relations", controller.AddRelations())
-	r.DELETE("/user/:user_name/project/:project_name/relation", controller.DeleteRelation())
+			// only admin can access projects
+			adminRoute.POST("/projects", controller.AddProjects())                  // add project
+			adminRoute.DELETE("/project/:project_name", controller.DeleteProject()) // delete project
 
-	// r.POST("/user/:user_id/project", addProjectsForUser()) // assign project for user
-	r.GET("/project/:project_name/envs", controller.GetProjectEnvs())     // add env for project
-	r.POST("/project/:project_name/envs", controller.UpdateProjectEnvs()) // add env for project
+			// only admin can access relations
+			adminRoute.GET("/relations", controller.GetRelations())
+			adminRoute.POST("/relations", controller.AddRelations())
+			adminRoute.DELETE("/user/:user_name/project/:project_name/relation", controller.DeleteRelation())
+		}
 
+		// users can access all projects' envs if the role is admin,
+		// otherwise, users can only access projects they rely on
+		authorized.GET("/project/:project_name/envs", verifyProjectPermission(), controller.GetProjectEnvs())     // get env for project
+		authorized.POST("/project/:project_name/envs", verifyProjectPermission(), controller.UpdateProjectEnvs()) // add env for project
+	}
 	return r
 }

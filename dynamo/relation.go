@@ -31,6 +31,37 @@ func GetRelations() (error, []Relation) {
 	return nil, relations
 }
 
+func GetUserRelations(userName string) (error, []Relation) {
+	var relations []Relation
+	tableName := "Relation"
+
+	var queryInput = &dynamodb.QueryInput{
+		TableName: aws.String(tableName),
+		KeyConditions: map[string]*dynamodb.Condition{
+			"UserName": {
+				ComparisonOperator: aws.String("EQ"),
+				AttributeValueList: []*dynamodb.AttributeValue{
+					{
+						S: aws.String(userName),
+					},
+				},
+			},
+		},
+	}
+
+	var result, err = d.Query(queryInput)
+	util.Check(err)
+
+	for _, i := range result.Items {
+		relation := Relation{}
+		err = dynamodbattribute.UnmarshalMap(i, &relation)
+		relations = append(relations, relation)
+		util.Check(err)
+	}
+
+	return nil, relations
+}
+
 func SaveRelation(relation Relation) bool {
 	av, err := dynamodbattribute.MarshalMap(relation)
 	if err != nil {

@@ -31,6 +31,26 @@ func GetUsers() (error, []User) {
 	return nil, users
 }
 
+func GetUser(user_name string) (error, User) {
+	tableName := "User"
+
+	result, err := d.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"UserName": {
+				S: aws.String(user_name),
+			},
+		},
+	})
+
+	item := User{}
+
+	err = dynamodbattribute.UnmarshalMap(result.Item, &item)
+	util.Check(err)
+
+	return nil, item
+}
+
 func SaveUser(user User) bool {
 	if len(user.Password) < 2 || user.Password[:2] != "$2" {
 		user.Password = util.Encrypt(user.Password)
